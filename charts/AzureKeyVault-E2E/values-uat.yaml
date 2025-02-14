@@ -1,0 +1,9 @@
+replicaCount: 2
+
+image:
+  repository: saipocregistry.azurecr.io/AzureKeyVault-E2E
+  tag: "latest"
+
+env:
+  SPRING_PROFILES_ACTIVE: "uat"
+  AZURE_KEYVAULT_NAME: "saiaksuatpoc"

@@ -1,0 +1,6 @@
+apiVersion: v2
+name: AzureKeyVault-E2E
+description: A Helm chart for deploying Azure Key Vault E2E Service
+type: application
+version: 1.0.0
+appVersion: "1.0"

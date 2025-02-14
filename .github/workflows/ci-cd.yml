@@ -1,0 +1,83 @@
+name: CI/CD Pipeline for Azure Key Vault E2E
+
+on:
+  push:
+    branches:
+      - development
+      - uat
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v3
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Build Application
+        run: mvn clean package -DskipTests
+
+      - name: Login to Azure
+        uses: azure/login@v1
+        with:
+          creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+      - name: Determine Namespace and Image Tag
+        run: |
+          SHORT_SHA=$(git rev-parse --short HEAD)
+          case "${{ github.ref }}" in
+            refs/heads/development)
+              echo "NAMESPACE=poc-clusters/poc-dev" >> $GITHUB_ENV
+              echo "IMAGE_TAG=$SHORT_SHA" >> $GITHUB_ENV
+              ;;
+            refs/heads/uat)
+              echo "NAMESPACE=poc-clusters/uat" >> $GITHUB_ENV
+              echo "IMAGE_TAG=$SHORT_SHA" >> $GITHUB_ENV
+              ;;
+            *)
+              echo "Unsupported branch, exiting..."
+              exit 1
+              ;;
+          esac
+
+      - name: Docker Login to ACR
+        run: echo ${{ secrets.AZURE_CLIENT_SECRET }} | docker login ${{ secrets.ACR_NAME }}.azurecr.io -u ${{ secrets.AZURE_CLIENT_ID }} --password-stdin
+        env:
+          ACR_NAME: ${{ secrets.ACR_NAME }}
+
+      - name: Build and Push Docker Image
+        run: |
+          docker build -t ${{ secrets.ACR_NAME }}.azurecr.io/azure-keyvault-e2e:${{ env.IMAGE_TAG }} .
+          docker push ${{ secrets.ACR_NAME }}.azurecr.io/azure-keyvault-e2e:${{ env.IMAGE_TAG }}
+
+      - name: Clone FluxCD Repo
+        run: |
+          git clone https://github.com/SanSai-lab/poc-flux-repo.git
+          cd poc-flux-repo
+          git config --global credential.helper cache
+          git config --global user.email "actions@github.com"
+          git config --global user.name "github-actions"
+          git remote set-url origin https://${{ secrets.GH_PAT }}@github.com/SanSai-lab/poc-flux-repo.git
+
+      - name: Update FluxCD HelmRelease and Push Changes
+        run: |
+          cd poc-flux-repo
+          # Debug: Check if the file exists before updating
+          if [[ ! -f "./clusters/${{ env.NAMESPACE }}/azure-keyvault-e2e/helmrelease.yaml" ]]; then
+            echo "Error: helmrelease.yaml not found at ./clusters/${{ env.NAMESPACE }}/azure-keyvault-e2e/"
+            exit 1
+          fi
+
+          # Update the image tag
+          yq eval -i '.spec.values.image.tag = "${{ env.IMAGE_TAG }}"' ./clusters/${{ env.NAMESPACE }}/azure-keyvault-e2e/helmrelease.yaml
+          git add .
+          git commit -m "Update image tag for azure-keyvault-e2e to ${{ env.IMAGE_TAG }}"
+          git push origin main
+        env:
+          GH_PAT: ${{ secrets.GH_PAT }}
