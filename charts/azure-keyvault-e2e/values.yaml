@@ -1,7 +1,7 @@
 replicaCount: 2
 
 image:
-  repository: saipocregistry.azurecr.io/AzureKeyVault-E2E
+  repository: saipocregistry.azurecr.io/azure-keyvault-e2e
   tag: "latest"
 
 service:
