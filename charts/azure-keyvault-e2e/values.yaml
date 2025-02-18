@@ -3,6 +3,7 @@ replicaCount: 2
 image:
   repository: saipocregistry.azurecr.io/azure-keyvault-e2e
   tag: "latest"
+  pullPolicy: Always
 
 service:
   type: LoadBalancer
@@ -17,5 +18,5 @@ resources:
     memory: "256Mi"
 
 env:
-  SPRING_PROFILES_ACTIVE: "dev"
-  AZURE_KEYVAULT_NAME: "saiaksdevpoc"
+  SPRING_PROFILES_ACTIVE: "default"
+  AZURE_KEYVAULT_NAME: "default-keyvault"
