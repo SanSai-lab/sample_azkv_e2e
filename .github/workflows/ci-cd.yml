@@ -47,3 +47,23 @@ jobs:
     - name: Display Image Tag
       run: |
         echo "New Docker image pushed with tag: ${IMAGE_TAG}"
+
+    # Helm Chart Packaging & Push (Added Below)
+    - name: Helm Login to ACR
+      run: |
+        az acr login --name ${{ secrets.ACR_NAME }}
+        helm registry login ${{ secrets.ACR_NAME }}.azurecr.io --username ${{ secrets.AZURE_CLIENT_ID }} --password ${{ secrets.AZURE_CLIENT_SECRET }}
+
+    - name: Package Helm Chart
+      run: |
+        cd charts/azure-keyvault-e2e
+        helm package . --destination .
+
+    - name: Push Helm Chart to ACR
+      run: |
+        CHART_VERSION=$(helm show chart charts/azure-keyvault-e2e | grep version | awk '{print $2}')
+        helm push azure-keyvault-e2e-${CHART_VERSION}.tgz oci://${{ secrets.ACR_NAME }}.azurecr.io/charts
+
+    - name: Verify Helm Chart in ACR
+      run: |
+        az acr repository show-tags --name ${{ secrets.ACR_NAME }} --repository charts/azure-keyvault-e2e
