@@ -30,10 +30,9 @@ jobs:
 
     - name: Generate Image Tag
       run: |
-        SHORT_SHA=$(git rev-parse --short HEAD)
-        TIMESTAMP=$(date +%Y%m%d%H%M%S)
-        echo "IMAGE_TAG=${TIMESTAMP}-${SHORT_SHA}" >> $GITHUB_ENV
-
+            TIMESTAMP=$(date +%Y%m%d%H%M%S)
+            echo "IMAGE_TAG=${TIMESTAMP}" >> $GITHUB_ENV
+            
     - name: Docker Login to ACR
       run: echo ${{ secrets.AZURE_CLIENT_SECRET }} | docker login ${{ secrets.ACR_NAME }}.azurecr.io -u ${{ secrets.AZURE_CLIENT_ID }} --password-stdin
       env:
